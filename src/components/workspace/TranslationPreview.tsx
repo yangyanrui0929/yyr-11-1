@@ -12,7 +12,8 @@ export default function TranslationPreview() {
   if (!currentTask) return null;
 
   const errorSet = new Set(validation?.errorIndices ?? []);
-  const chars = translation.split('');
+  const tChars = translation.split('');
+  const cChars = currentTask.ciphertext.split('');
   let letterIdx = 0;
 
   const handleSaveNotes = () => {
@@ -43,10 +44,12 @@ export default function TranslationPreview() {
       </div>
 
       <div className="text-lg leading-loose tracking-wide whitespace-pre-wrap break-words min-h-[180px] p-4 bg-terminal-paper/60 border border-terminal-paperDark/30">
-        {chars.map((ch, i) => {
-          const isLetter = /[A-Za-z·]/.test(ch);
-          const currentLetterIdx = isLetter ? letterIdx++ : letterIdx;
-          const isError = isLetter && errorSet.has(currentLetterIdx);
+        {tChars.map((ch, i) => {
+          const cipherCh = cChars[i] || ' ';
+          const isCipherLetter = /[A-Za-z]/.test(cipherCh);
+          const currentLetterIdx = isCipherLetter ? letterIdx++ : letterIdx;
+          const isError = isCipherLetter && errorSet.has(currentLetterIdx);
+          const isTranslatedLetter = /[A-Za-z]/.test(ch);
 
           if (ch === '\n') return <br key={i} />;
 

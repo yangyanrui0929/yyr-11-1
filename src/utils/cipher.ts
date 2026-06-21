@@ -77,6 +77,7 @@ export function validateTranslation(
   const errorIndices: number[] = [];
   let correctCount = 0;
   let totalCount = 0;
+  let letterIdx = 0;
 
   const maxLen = Math.max(translation.length, answer.length);
 
@@ -89,8 +90,9 @@ export function validateTranslation(
       if (tChar.toUpperCase() === aChar.toUpperCase()) {
         correctCount++;
       } else {
-        errorIndices.push(i);
+        errorIndices.push(letterIdx);
       }
+      letterIdx++;
     }
   }
 

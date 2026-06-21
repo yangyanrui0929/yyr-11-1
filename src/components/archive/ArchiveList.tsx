@@ -61,9 +61,7 @@ export default function ArchiveList() {
               <ArchiveCard
                 key={task.id}
                 task={task}
-                onClick={() => {
-                  navigate('/');
-                }}
+                onClick={() => navigate(`/archive/${task.id}`)}
                 onDelete={() => {
                   if (confirm(`删除任务「${task.title}」?`)) deleteTask(task.id);
                 }}
@@ -103,7 +101,7 @@ function ArchiveCard({
   const uniqueCount = new Set(task.ciphertext.replace(/[^A-Z]/g, '')).size;
 
   return (
-    <div className="archive-card p-4" onClick={onClick}>
+    <div className="archive-card p-4 cursor-pointer hover:border-terminal-phosphorDim/50 transition-colors" onClick={onClick}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
           {task.status === 'completed' ? (

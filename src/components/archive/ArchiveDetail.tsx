@@ -1,12 +1,31 @@
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAppStore } from '@/store/useAppStore';
 import { formatDate, applySubstitution } from '@/utils/cipher';
-import { ArrowLeft, Calendar, MapPin, Tag, FileText, CheckCircle, Edit3 } from 'lucide-react';
+import { ArrowLeft, Calendar, MapPin, Tag, FileText, CheckCircle, Edit3, Highlighter, AlertTriangle, StickyNote, Trash2 } from 'lucide-react';
+import type { MarkerType, Marker } from '@/types';
+
+const MARKER_CONFIG: Record<MarkerType, { label: string; color: string; icon: React.ReactNode }> = {
+  highlight: {
+    label: '高亮',
+    color: '#d4a017',
+    icon: <Highlighter size={14} />,
+  },
+  suspicious: {
+    label: '可疑',
+    color: '#b7410e',
+    icon: <AlertTriangle size={14} />,
+  },
+  note: {
+    label: '笔记',
+    color: '#39ff14',
+    icon: <StickyNote size={14} />,
+  },
+};
 
 export default function ArchiveDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tasks, setCurrentTask } = useAppStore();
+  const { tasks, setCurrentTask, removeMarker } = useAppStore();
 
   const task = tasks.find((t) => t.id === id);
 
@@ -24,6 +43,46 @@ export default function ArchiveDetail() {
   const translation = applySubstitution(task.ciphertext, task.substitutionMap);
   const mappedCount = Object.keys(task.substitutionMap).length;
   const uniqueCount = new Set(task.ciphertext.replace(/[^A-Z]/g, '')).size;
+
+  const getMarkerForLetterIndex = (letterIdx: number): Marker | null => {
+    for (const marker of task.markers) {
+      if (letterIdx >= marker.startIndex && letterIdx <= marker.endIndex) {
+        return marker;
+      }
+    }
+    return null;
+  };
+
+  const renderCipherWithMarkers = () => {
+    const chars = task.ciphertext.split('');
+    let letterIdx = 0;
+    return chars.map((ch, i) => {
+      const isLetter = /[A-Z]/.test(ch);
+      if (isLetter) {
+        const currentIdx = letterIdx++;
+        const marker = getMarkerForLetterIndex(currentIdx);
+        if (marker) {
+          return (
+            <span
+              key={i}
+              className="font-bold"
+              style={{
+                backgroundColor: `${marker.color}30`,
+                borderBottom: `2px solid ${marker.color}`,
+                color: marker.color,
+                padding: '0 2px',
+                borderRadius: '2px',
+              }}
+              title={`${MARKER_CONFIG[marker.type].label}: ${marker.comment || ''}`}
+            >
+              {ch}
+            </span>
+          );
+        }
+      }
+      return <span key={i}>{ch}</span>;
+    });
+  };
 
   return (
     <div className="h-full overflow-y-auto p-6">
@@ -94,8 +153,8 @@ export default function ArchiveDetail() {
             <h2 className="font-display text-terminal-ink text-lg tracking-wide mb-3 flex items-center gap-2">
               <FileText size={16} /> 原始密文
             </h2>
-            <div className="p-4 bg-terminal-paper/50 border border-terminal-paperDark/40 font-mono text-sm text-terminal-ink/80 leading-loose tracking-wide break-words">
-              {task.ciphertext}
+            <div className="p-4 bg-terminal-paper/50 border border-terminal-paperDark/40 font-mono text-sm text-terminal-ink/80 leading-loose tracking-wide break-words whitespace-pre-wrap">
+              {renderCipherWithMarkers()}
             </div>
           </section>
 
@@ -128,6 +187,64 @@ export default function ArchiveDetail() {
               <h2 className="font-display text-terminal-ink text-lg tracking-wide mb-3">译码提示</h2>
               <div className="p-4 bg-terminal-rust/10 border border-terminal-rust/40 font-display text-sm text-terminal-ink leading-relaxed">
                 {task.hint}
+              </div>
+            </section>
+          )}
+
+          {task.markers.length > 0 && (
+            <section className="mb-6">
+              <h2 className="font-display text-terminal-ink text-lg tracking-wide mb-3 flex items-center gap-2">
+                <Highlighter size={16} /> 可疑片段标记 ({task.markers.length})
+              </h2>
+              <div className="space-y-2">
+                {task.markers.map((marker) => {
+                  const text = (() => {
+                    let lIdx = 0;
+                    let result = '';
+                    for (const ch of task.ciphertext) {
+                      if (/[A-Z]/.test(ch)) {
+                        if (lIdx >= marker.startIndex && lIdx <= marker.endIndex) result += ch;
+                        lIdx++;
+                      }
+                    }
+                    return result;
+                  })();
+                  return (
+                    <div
+                      key={marker.id}
+                      className="p-3 border font-display text-sm"
+                      style={{
+                        backgroundColor: `${marker.color}15`,
+                        borderColor: `${marker.color}50`,
+                        borderLeftWidth: '4px',
+                        borderLeftColor: marker.color,
+                      }}
+                    >
+                      <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          {MARKER_CONFIG[marker.type].icon}
+                          <span className="font-mono text-xs" style={{ color: marker.color }}>
+                            {MARKER_CONFIG[marker.type].label}
+                          </span>
+                          <span className="text-terminal-ink/50 text-xs">
+                            位置 {marker.startIndex}-{marker.endIndex}
+                          </span>
+                        </div>
+                        <button
+                          onClick={() => removeMarker(task.id, marker.id)}
+                          className="p-1 text-terminal-ink/40 hover:text-terminal-alert transition-colors"
+                          title="删除标记"
+                        >
+                          <Trash2 size={12} />
+                        </button>
+                      </div>
+                      <div className="font-mono tracking-widest text-terminal-ink mb-1">{text}</div>
+                      {marker.comment && (
+                        <div className="text-terminal-ink/70 text-sm">{marker.comment}</div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             </section>
           )}
